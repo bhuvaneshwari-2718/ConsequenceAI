@@ -50,105 +50,32 @@ export async function analyzeScenario(scenario, category) {
     throw new Error("Scenario cannot be empty.");
   }
 
-  const response = await fetch(
-    "https://api.openai.com/v1/responses",
-    {
-      method: "POST",
+  const response = await fetch("/api/consequence", {
+    method: "POST",
 
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${
-          import.meta.env.VITE_OPENAI_API_KEY
-        }`
-      },
+    headers: {
+      "Content-Type": "application/json"
+    },
 
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-
-        input: `
-You are the AI engine for an application called CONSEQUENCE.
-
-The user gives you a scenario and you analyze the chain of consequences.
-
-Category:
-${category}
-
-Scenario:
-${cleanScenario}
-
-Generate exactly 4 consequences:
-
-1. Direct Effect
-2. Second-Order Effect
-3. Second-Order Effect
-4. System Effect
-
-Return ONLY a valid JSON array.
-
-Each object must contain exactly these fields:
-
-id
-level
-type
-title
-description
-impact
-likelihood
-explanation
-
-Use these type values:
-
-direct
-second-order
-system
-
-Example format:
-
-[
-  {
-    "id": 1,
-    "level": "Direct Effect",
-    "type": "direct",
-    "title": "Example title",
-    "description": "Example description",
-    "impact": "High",
-    "likelihood": "High",
-    "explanation": "Example explanation"
-  }
-]
-
-Do not use markdown.
-Do not write anything before or after the JSON.
-`
-      })
-    }
-  );
+    body: JSON.stringify({
+      scenario: cleanScenario,
+      category
+    })
+  });
 
   if (!response.ok) {
     const errorData = await response.json();
 
-    console.error("OpenAI error:", errorData);
+    console.error("API error:", errorData);
 
-    throw new Error("OpenAI API request failed.");
+    throw new Error(
+      errorData.error || "AI analysis failed."
+    );
   }
 
   const data = await response.json();
 
-  console.log("OpenAI response:", data);
+  console.log("AI response:", data);
 
-  const outputText =
-    data.output
-      ?.flatMap((item) => item.content || [])
-      ?.find(
-        (content) => content.type === "output_text"
-      )
-      ?.text;
-
-  if (!outputText) {
-    throw new Error("No AI response received.");
-  }
-
-  const parsedResult = JSON.parse(outputText);
-
-  return processResult(parsedResult);
+  return processResult(data);
 }
